@@ -99,9 +99,12 @@ jobs:
           additional_permissions: |
             actions: read
           claude_args: >-
-            --allowedTools "Edit" "Write"
+            --allowedTools "Read" "Glob" "Grep" "Edit" "Write"
             "Bash(git status:*)" "Bash(git diff:*)" "Bash(git log:*)"
             "Bash(git show:*)" "Bash(git add:*)" "Bash(git commit:*)"
-            "Bash(git push:*)" "Bash(uv run:*)" "Bash(rg:*)"
-            "Bash(sed:*)" "Bash(cat:*)" "Bash(ls:*)" "Bash(pwd)"
+            "Bash(git push:*)" "Bash(git branch:*)" "Bash(git rev-parse:*)"
+            "Bash(git config:*)" "Bash(uv run:*)" "Bash(uv sync:*)"
+            "Bash(gh pr view:*)" "Bash(rg:*)" "Bash(find:*)"
+            "Bash(sed:*)" "Bash(cat:*)" "Bash(head:*)" "Bash(tail:*)"
+            "Bash(wc:*)" "Bash(ls:*)" "Bash(pwd)" "Bash(test:*)"
           prompt: ${{ needs.orchestrate.outputs.prompt }}
