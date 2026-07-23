@@ -97,7 +97,7 @@ test("finding review fails the gate and emits the complete Claude prompt", async
       "Review: https://github.com/jlixfeld/example/pull/42#pullrequestreview-123",
       "This is fix attempt 1 of 10.",
       "",
-      "Read every unresolved inline finding from that latest Codex review. Evaluate each finding technically; do not accept it automatically. Implement only justified fixes, and explain unsupported findings in your progress comment.",
+      "Read the review summary and every unresolved inline finding from that latest Codex review. Evaluate each finding technically; do not accept it automatically. Implement only justified fixes, and explain unsupported findings in your progress comment.",
       "",
       "For every behavior change, add or update a test that would have caught the problem. Run the repository's documented verification commands. Keep unrelated code unchanged. Commit and push the verified changes to the existing pull-request branch. If no code changes are justified, explain the rebuttal, then create and push an empty commit so the current conclusion receives a fresh Codex review. Do not create a new pull request and do not merge.",
     ].join("\n"),
@@ -108,7 +108,6 @@ test("finding review fails the gate and emits the complete Claude prompt", async
     ["listIssueComments", 42],
     ["listReviewComments", 42, 123],
     ["listReviewThreads", 42],
-    ["resolveReviewThread", "old-codex"],
     [
       "createCommitStatus",
       "abc123",
@@ -127,6 +126,37 @@ test("finding review fails the gate and emits the complete Claude prompt", async
       ].join("\n"),
     ],
   ]);
+});
+
+test("changes-requested review without inline comments fails closed", async () => {
+  const client = fakeClient({
+    reviewComments: [],
+    threads: [thread("old-codex", CODEX_LOGIN, "OLD_REVIEW")],
+    permission: "write",
+  });
+  const result = await runReview(client, {
+    ...reviewEvent,
+    review: {
+      ...review,
+      state: "changes_requested",
+      body: "The migration can delete newer rows.",
+    },
+  });
+
+  assert.equal(result["should-fix"], "true");
+  assert.match(result.prompt, /Read the review summary/);
+  assert.equal(
+    client.calls.some(([method]) => method === "resolveReviewThread"),
+    false,
+  );
+  assert.ok(
+    client.calls.some(
+      ([method, sha, state]) =>
+        method === "createCommitStatus" &&
+        sha === "abc123" &&
+        state === "failure",
+    ),
+  );
 });
 
 test("attempts one through ten run, but an eleventh attempt cannot run", async () => {

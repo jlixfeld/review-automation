@@ -161,7 +161,7 @@ test("fix eligibility enforces repository, trust, head, and findings", () => {
   );
 });
 
-test("only superseded unresolved Codex-rooted threads are selected", () => {
+test("Codex threads are resolved only after a clean re-review", () => {
   const threads = [
     thread("old-codex", "ChatGPT-Codex-Connector[bot]", "OLD_REVIEW"),
     thread("latest-codex", "chatgpt-codex-connector[bot]", "LATEST_REVIEW"),
@@ -174,16 +174,14 @@ test("only superseded unresolved Codex-rooted threads are selected", () => {
     selectCodexThreadsToResolve({
       threads,
       codexLogin: "chatgpt-codex-connector[bot]",
-      latestReviewNodeId: "LATEST_REVIEW",
       clean: false,
     }),
-    ["old-codex"],
+    [],
   );
   assert.deepEqual(
     selectCodexThreadsToResolve({
       threads,
       codexLogin: "chatgpt-codex-connector[bot]",
-      latestReviewNodeId: "LATEST_REVIEW",
       clean: true,
     }),
     ["old-codex", "latest-codex"],
@@ -204,7 +202,7 @@ test("Claude prompt is complete and requires technical evaluation", () => {
       "Review: https://github.com/jlixfeld/example/pull/42#pullrequestreview-123",
       "This is fix attempt 4 of 10.",
       "",
-      "Read every unresolved inline finding from that latest Codex review. Evaluate each finding technically; do not accept it automatically. Implement only justified fixes, and explain unsupported findings in your progress comment.",
+      "Read the review summary and every unresolved inline finding from that latest Codex review. Evaluate each finding technically; do not accept it automatically. Implement only justified fixes, and explain unsupported findings in your progress comment.",
       "",
       "For every behavior change, add or update a test that would have caught the problem. Run the repository's documented verification commands. Keep unrelated code unchanged. Commit and push the verified changes to the existing pull-request branch. If no code changes are justified, explain the rebuttal, then create and push an empty commit so the current conclusion receives a fresh Codex review. Do not create a new pull request and do not merge.",
     ].join("\n"),

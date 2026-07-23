@@ -105,9 +105,12 @@ export function isEligibleFix({
 export function selectCodexThreadsToResolve({
   threads,
   codexLogin,
-  latestReviewNodeId,
   clean,
 }) {
+  if (!clean) {
+    return [];
+  }
+
   return threads
     .filter((thread) => {
       if (thread?.isResolved) {
@@ -119,7 +122,7 @@ export function selectCodexThreadsToResolve({
         return false;
       }
 
-      return clean || root?.pullRequestReview?.id !== latestReviewNodeId;
+      return true;
     })
     .map((thread) => thread.id);
 }
@@ -136,7 +139,7 @@ export function buildClaudePrompt({
     `Review: ${reviewUrl}`,
     `This is fix attempt ${attempt} of ${maxAttempts}.`,
     "",
-    "Read every unresolved inline finding from that latest Codex review. Evaluate each finding technically; do not accept it automatically. Implement only justified fixes, and explain unsupported findings in your progress comment.",
+    "Read the review summary and every unresolved inline finding from that latest Codex review. Evaluate each finding technically; do not accept it automatically. Implement only justified fixes, and explain unsupported findings in your progress comment.",
     "",
     "For every behavior change, add or update a test that would have caught the problem. Run the repository's documented verification commands. Keep unrelated code unchanged. Commit and push the verified changes to the existing pull-request branch. If no code changes are justified, explain the rebuttal, then create and push an empty commit so the current conclusion receives a fresh Codex review. Do not create a new pull request and do not merge.",
   ].join("\n");

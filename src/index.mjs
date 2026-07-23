@@ -122,7 +122,10 @@ async function handleReviewEvent({ env, event, client, outputs }) {
       pr.number,
       event.review.id,
     );
-    const findingCount = reviewComments.length;
+    const findingCount = Math.max(
+      reviewComments.length,
+      sameText(event.review?.state, "changes_requested") ? 1 : 0,
+    );
 
     if (hasMarker(comments, handledMarker)) {
       await setTerminalStatus(client, pr, findingCount);
@@ -133,7 +136,6 @@ async function handleReviewEvent({ env, event, client, outputs }) {
     const threadIds = selectCodexThreadsToResolve({
       threads,
       codexLogin,
-      latestReviewNodeId: event.review.node_id,
       clean: findingCount === 0,
     });
     for (const threadId of threadIds) {

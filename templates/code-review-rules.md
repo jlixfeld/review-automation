@@ -8,7 +8,7 @@ When reviewing a pull request:
 - Post only high-confidence, actionable findings introduced by the pull request.
 - Every finding must identify a concrete failure scenario, explain its impact, and cite the relevant file and line.
 - Do not post style preferences, speculative concerns, pre-existing problems, or issues that ordinary CI already catches.
-- Prefer inline GitHub review comments. If there are no findings, post one concise clean-review summary.
+- Post every blocking finding as an inline GitHub review comment; never put a blocking finding only in the review summary. If there are no findings, post one concise clean-review summary.
 
 When re-reviewing a pull request:
 

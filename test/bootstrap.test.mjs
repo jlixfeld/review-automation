@@ -80,6 +80,22 @@ test("review rules append once and replace an existing section surgically", () =
   );
 });
 
+test("review rules require every blocking finding to be inline", async () => {
+  const reviewRules = await readFile(
+    new URL("../templates/code-review-rules.md", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    reviewRules,
+    /Post every blocking finding as an inline GitHub review comment/,
+  );
+  assert.match(
+    reviewRules,
+    /never put a blocking finding only in the review summary/,
+  );
+});
+
 test("review rules reject malformed replacement content on every path", () => {
   assert.throws(
     () => mergeReviewRules("# Repository Instructions\n", "Malformed rules"),
