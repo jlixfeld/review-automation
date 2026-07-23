@@ -99,7 +99,7 @@ test("finding review fails the gate and emits the complete Claude prompt", async
       "",
       "Read every unresolved inline finding from that latest Codex review. Evaluate each finding technically; do not accept it automatically. Implement only justified fixes, and explain unsupported findings in your progress comment.",
       "",
-      "For every behavior change, add or update a test that would have caught the problem. Run the repository's documented verification commands. Keep unrelated code unchanged. Commit and push the verified changes to the existing pull-request branch. Do not create a new pull request and do not merge.",
+      "For every behavior change, add or update a test that would have caught the problem. Run the repository's documented verification commands. Keep unrelated code unchanged. Commit and push the verified changes to the existing pull-request branch. If no code changes are justified, explain the rebuttal, then create and push an empty commit so the current conclusion receives a fresh Codex review. Do not create a new pull request and do not merge.",
     ].join("\n"),
     attempt: "1",
   });
