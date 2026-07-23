@@ -119,3 +119,15 @@ test("central CI pins official actions and runs all tests", async () => {
   assert.match(workflow, /run: npm test/);
   assert.match(workflow, /ruby -e 'require "yaml";/);
 });
+
+test("README documents canary-before-gate and fork safety", async () => {
+  const readme = await read("README.md");
+
+  assert.match(readme, /Only then add `codex-review`/);
+  assert.match(
+    readme,
+    /fork-originated pull request does not start\s+the Claude job/,
+  );
+  assert.match(readme, /at most ten times/);
+  assert.match(readme, /does not use `secrets: inherit`/);
+});
