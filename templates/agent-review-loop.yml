@@ -1,0 +1,23 @@
+name: Agent review loop
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  review-loop:
+    permissions:
+      actions: read
+      contents: write
+      issues: write
+      pull-requests: write
+      statuses: write
+    uses: jlixfeld/review-automation/.github/workflows/review-loop.yml@v1
+    with:
+      automation_ref: v1
+      codex_login: chatgpt-codex-connector[bot]
+      max_fix_attempts: 10
+    secrets:
+      claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

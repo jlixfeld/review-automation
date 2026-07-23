@@ -1,0 +1,28 @@
+name: Codex review orchestrator
+description: Coordinates native Codex reviews and trusted Claude fix attempts.
+inputs:
+  github-token:
+    description: GitHub token used for review orchestration.
+    required: true
+  codex-login:
+    description: Exact GitHub login of the native Codex App.
+    required: false
+    default: chatgpt-codex-connector[bot]
+  max-fix-attempts:
+    description: Maximum Claude fix attempts allowed for one pull request.
+    required: false
+    default: "10"
+outputs:
+  should-fix:
+    description: Whether the trusted Claude fix job should run.
+  pr-number:
+    description: Pull request number handled by this event.
+  head-ref:
+    description: Current same-repository pull request head branch.
+  prompt:
+    description: Complete prompt for the Claude fix job.
+  attempt:
+    description: One-based Claude fix-attempt number.
+runs:
+  using: node20
+  main: src/index.mjs
