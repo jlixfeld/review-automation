@@ -104,6 +104,7 @@ export function buildTrackingIssue(metadata) {
       "Acceptance criteria:",
       "- add the thin caller workflow;",
       "- add the exact native Codex review rules;",
+      "- enable native Codex auto-review for every pull-request revision;",
       "- install the named Claude OAuth secret without exposing it;",
       "- verify a live canary before changing branch protection;",
       "- preserve every existing deterministic check and unrelated protection.",

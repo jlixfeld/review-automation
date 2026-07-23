@@ -8,8 +8,9 @@ classic `codex-review` commit status, not a model-authored GitHub approval.
 
 For each open, non-draft pull request:
 
-1. The workflow writes `codex-review=pending` to the current head SHA and posts
-   one idempotent `@codex review` request.
+1. The workflow writes `codex-review=pending` to the current head SHA. Native
+   Codex auto-review, configured for every pull-request revision, supplies the
+   review.
 2. A review from the exact native Codex App account is accepted only when its
    commit matches the pull request's current head.
 3. A clean review resolves older Codex conversations and writes
@@ -26,8 +27,10 @@ the credentialed Claude fix job.
 
 ## Target-repository setup
 
-Install the native Codex GitHub App for the repository, then add
-`CLAUDE_CODE_OAUTH_TOKEN` as a repository Actions secret.
+Install the native Codex GitHub App for the repository. Enable native Codex
+auto-review and set its trigger to every pull-request revision so every Claude
+push receives a fresh review. Then add `CLAUDE_CODE_OAUTH_TOKEN` as a repository
+Actions secret.
 
 Copy:
 
@@ -77,7 +80,8 @@ For every repository:
 
 1. Merge the rollout pull request without changing branch protection.
 2. Open a canary pull request or push a canary revision.
-3. Confirm the GitHub Actions-authored request triggers the native Codex App.
+3. Confirm native Codex auto-review starts without a manual or bot-authored
+   mention.
 4. Confirm the current SHA transitions through `pending` and then either
    `failure` or `success`.
 5. For a finding-bearing review, confirm Claude pushes a tested fix and the new
@@ -92,14 +96,13 @@ the Claude job and receives no Claude credential.
 
 ## Failure and rollback
 
-- No Codex response leaves the status pending and does not duplicate the
-  request.
+- No Codex response leaves the status pending.
 - A stale review is ignored.
 - Remaining findings, a Claude failure, the tenth-attempt limit, or an
   orchestration failure leaves the gate failing.
 - A review-thread resolution error cannot produce success.
-- If GitHub Actions-authored comments cannot trigger native Codex, stop rollout
-  and use a narrowly scoped service account solely for the review request.
+- If native auto-review is disabled or does not run on every revision, stop
+  rollout and correct the repository's Codex review settings.
 
 To roll back, first remove `codex-review` from required checks, then remove the
 target caller workflow. Existing CI and security checks remain untouched.

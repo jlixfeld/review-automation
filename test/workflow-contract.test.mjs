@@ -139,4 +139,6 @@ test("README documents canary-before-gate and fork safety", async () => {
   );
   assert.match(readme, /at most ten times/);
   assert.match(readme, /does not use `secrets: inherit`/);
+  assert.match(readme, /native Codex auto-review/i);
+  assert.match(readme, /every pull-request revision/i);
 });

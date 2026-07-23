@@ -20,8 +20,6 @@ import {
   markerComment,
   markersComment,
   parseAttemptCount,
-  requestMarker,
-  reviewRequestComment,
   selectCodexThreadsToResolve,
 } from "./orchestrator.mjs";
 
@@ -71,15 +69,6 @@ async function handleRequestEvent({ event, client, outputs }) {
     "pending",
     `PR #${pr.number} is awaiting the current native Codex review`,
   );
-
-  const comments = await client.listIssueComments(pr.number);
-  const marker = requestMarker(pr.number, pr.head.sha);
-  if (!hasMarker(comments, marker)) {
-    await client.postIssueComment(
-      pr.number,
-      reviewRequestComment(pr.number, pr.head.sha),
-    );
-  }
 
   return outputs;
 }

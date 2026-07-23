@@ -24,7 +24,7 @@ const requestEvent = {
   },
 };
 
-test("request event sets pending and posts one exact Codex request", async () => {
+test("request event sets pending and relies on native auto-review", async () => {
   const client = fakeClient({ pr: pullRequest, comments: [] });
 
   const result = await runAction({
@@ -48,37 +48,11 @@ test("request event sets pending and posts one exact Codex request", async () =>
       "pending",
       "PR #42 is awaiting the current native Codex review",
     ],
-    ["listIssueComments", 42],
-    [
-      "postIssueComment",
-      42,
-      [
-        "@codex review",
-        "",
-        "<!-- codex-review-loop:request:42:abc123 -->",
-        "",
-        "- Codex",
-      ].join("\n"),
-    ],
   ]);
 });
 
-test("existing request marker makes retries idempotent", async () => {
-  const client = fakeClient({
-    pr: pullRequest,
-    comments: [
-      {
-        user: { login: "github-actions[bot]" },
-        body: [
-          "@codex review",
-          "",
-          "<!-- codex-review-loop:request:42:abc123 -->",
-          "",
-          "- Codex",
-        ].join("\n"),
-      },
-    ],
-  });
+test("request retries refresh pending without posting comments", async () => {
+  const client = fakeClient({ pr: pullRequest, comments: [] });
 
   const result = await runAction({
     env: { GITHUB_EVENT_NAME: "pull_request_target" },
@@ -95,33 +69,7 @@ test("existing request marker makes retries idempotent", async () => {
       "pending",
       "PR #42 is awaiting the current native Codex review",
     ],
-    ["listIssueComments", 42],
   ]);
-});
-
-test("a pull-request author cannot spoof the request marker", async () => {
-  const client = fakeClient({
-    pr: pullRequest,
-    comments: [
-      {
-        user: { login: "jlixfeld" },
-        body: "<!-- codex-review-loop:request:42:abc123 -->",
-      },
-    ],
-  });
-
-  await runAction({
-    env: { GITHUB_EVENT_NAME: "pull_request_target" },
-    event: requestEvent,
-    client,
-  });
-
-  assert.ok(
-    client.calls.some(
-      ([method, , body]) =>
-        method === "postIssueComment" && body.startsWith("@codex review"),
-    ),
-  );
 });
 
 test("closed and draft pull requests are ignored", async () => {
@@ -180,13 +128,6 @@ function fakeClient({ pr, comments }) {
     },
     async createCommitStatus(...args) {
       calls.push(["createCommitStatus", ...args]);
-    },
-    async listIssueComments(number) {
-      calls.push(["listIssueComments", number]);
-      return comments;
-    },
-    async postIssueComment(...args) {
-      calls.push(["postIssueComment", ...args]);
     },
   };
 }

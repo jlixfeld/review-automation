@@ -7,10 +7,6 @@ import {
 const TRUSTED_PERMISSIONS = new Set(["admin", "maintain", "write"]);
 const FOOTER = "- Codex";
 
-export function requestMarker(prNumber, headSha) {
-  return marker("request", prNumber, headSha);
-}
-
 export function handledReviewMarker(reviewNodeId, headSha) {
   return marker("handled", reviewNodeId, headSha);
 }
@@ -29,10 +25,6 @@ export function markerComment(hiddenMarker) {
 
 export function markersComment(hiddenMarkers) {
   return `${hiddenMarkers.join("\n")}\n\n${FOOTER}`;
-}
-
-export function reviewRequestComment(prNumber, headSha) {
-  return `@codex review\n\n${requestMarker(prNumber, headSha)}\n\n${FOOTER}`;
 }
 
 export function hasMarker(comments, expectedMarker) {

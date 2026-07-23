@@ -91,11 +91,10 @@ For an eligible pull-request revision, the reusable workflow:
 
 1. Cancels any superseded run for the same pull request.
 2. Sets commit status `codex-review` on the current head SHA to `pending`.
-3. Checks for an existing hidden request marker for the same head SHA.
-4. Posts exactly one `@codex review` request when no marker exists.
+3. Relies on native Codex auto-review configured for every pull-request revision.
 
-The request body ends with a separate `- Codex` footer and includes a hidden marker containing
-the pull-request number and head SHA. The marker makes retries idempotent.
+GitHub Actions does not post `@codex review`: bot-authored mentions are not associated with the
+user's connected Codex account.
 
 ### Receiving Codex review
 

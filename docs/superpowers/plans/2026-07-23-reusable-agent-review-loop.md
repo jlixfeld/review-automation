@@ -126,22 +126,13 @@ pull_request_target event
   -> fetch authoritative PR
   -> reject draft/closed/stale event
   -> set current head status pending
-  -> post one marked @codex review request if absent
+  -> rely on native Codex auto-review for every pull-request revision
   -> output should-fix=false
 ```
 
 - [ ] Refactor the action entrypoint to export `runAction({ env, event, client, output })` so tests do not spawn a process.
-- [ ] Write a failing happy-path test asserting the complete pending-status payload and exact request comment:
-
-```md
-@codex review
-
-<!-- codex-review-loop:request:PR_NUMBER:HEAD_SHA -->
-
-- Codex
-```
-
-- [ ] Add failing tests for closed PRs, drafts, stale event SHAs, duplicate request markers, and retries.
+- [ ] Write a failing happy-path test asserting the complete pending-status payload and no issue-comment mutation.
+- [ ] Add failing tests for closed PRs, drafts, stale event SHAs, and retries.
 - [ ] Assert in every test that request handling never returns `should-fix=true`.
 - [ ] Run `node --test test/request-flow.test.mjs` and verify it fails.
 - [ ] Implement request handling using the authoritative PR returned by GitHub.
@@ -266,7 +257,7 @@ node scripts/bootstrap-repo.mjs --repo OWNER/REPO [--dry-run]
 - [ ] Add the caller workflow pinned to the central canary SHA and merge the exact `## Code Review Rules` template into `AGENTS.md`.
 - [ ] Add tests or static checks for the workflow and review-rules contract.
 - [ ] Commit, push, and open the rollout PR.
-- [ ] Verify the GitHub Actions-authored `@codex review` request triggers the native Codex App. Stop rollout if it does not.
+- [ ] Verify native Codex auto-review triggers on every pull-request revision without a manual or bot-authored mention. Stop rollout if it does not.
 - [ ] Exercise one high-confidence finding → Claude fix → new Codex review cycle.
 - [ ] Verify the final clean review resolves superseded Codex conversations and writes `codex-review=success`.
 - [ ] Merge only after user approval, then delete the worktree and local/remote rollout branch.
