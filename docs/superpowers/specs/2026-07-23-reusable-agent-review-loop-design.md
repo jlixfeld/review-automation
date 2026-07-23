@@ -80,29 +80,27 @@ Claude write credentials or pushes commits to them.
 
 ## Event Flow
 
-### Requesting review
+### Receiving terminal review signals
 
 The target caller listens for:
 
-- `pull_request_target`: `opened`, `synchronize`, `reopened`, and `ready_for_review`;
-- `pull_request_review`: `submitted`.
+- `pull_request_review`: `submitted`, for finding-bearing reviews;
+- `issue_comment`: `created`, for clean reviews containing a reviewed commit SHA.
 
-For an eligible pull-request revision, the reusable workflow:
-
-1. Cancels any superseded run for the same pull request.
-2. Sets commit status `codex-review` on the current head SHA to `pending`.
-3. Relies on native Codex auto-review configured for every pull-request revision.
+Native Codex auto-review is configured for every pull-request revision. Until Codex emits one of
+the authenticated terminal signals above, the required `codex-review` context is absent and the
+pull request remains blocked.
 
 GitHub Actions does not post `@codex review`: bot-authored mentions are not associated with the
 user's connected Codex account.
 
 ### Receiving Codex review
 
-The review handler ignores reviews unless:
+The review handlers ignore signals unless:
 
 - the author is the configured native Codex GitHub App account;
-- the review commit matches the pull request's current head SHA; and
-- the review has not already been handled.
+- the review or clean-comment commit matches the pull request's current head SHA; and
+- the signal has not already been handled.
 
 It fetches the inline comments associated with that review. Inline comments are the finding
 signal:
@@ -189,12 +187,13 @@ preserving the historical discussion in collapsed threads.
 
 ## Commit Status
 
-The workflow writes a classic commit status named `codex-review` to the pull request head SHA:
+The workflow writes a terminal classic commit status named `codex-review` to the pull request
+head SHA:
 
-- `pending`: waiting for native Codex review;
 - `failure`: Codex findings remain, the iteration limit was reached, or orchestration failed;
-- `success`: the latest Codex review applies to the current head SHA and contains no inline
-  findings.
+- `success`: the latest Codex clean comment identifies the current head SHA.
+
+Before either terminal signal, the required context is absent and GitHub keeps merging blocked.
 
 Status descriptions identify the pull request and iteration without exposing secrets or model
 output.
@@ -204,7 +203,7 @@ required status checks are preserved.
 
 ## Security Boundaries
 
-- `pull_request_target` executes only centrally versioned workflow code.
+- Orchestration runs only for authenticated Codex review and clean-comment events.
 - Untrusted pull-request code is never executed by the orchestration step.
 - The native Codex reviewer remains read-only.
 - Claude receives write access only for trusted, same-repository pull requests.
@@ -220,10 +219,8 @@ required status checks are preserved.
 
 ## Failure Handling
 
-- If native Codex does not respond, `codex-review` remains pending and the workflow posts no
-  duplicate request for the same SHA.
-- If GitHub Actions bot comments cannot trigger native Codex, canary rollout stops. The fallback
-  is a narrowly scoped service-account token used only to post the review request.
+- If native Codex does not respond, the required `codex-review` context remains absent.
+- If native auto-review is disabled or does not run on every revision, canary rollout stops.
 - If a Codex review targets an old SHA, it is ignored.
 - If Claude fails without pushing, `codex-review` remains failing and the attempt stays counted.
 - If Claude pushes after the PR closes or the head changes, normal GitHub branch protections

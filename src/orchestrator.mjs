@@ -36,6 +36,18 @@ export function hasMarker(comments, expectedMarker) {
   });
 }
 
+export function cleanReviewCommit(body) {
+  if (
+    typeof body !== "string" ||
+    !body.startsWith("Codex Review: Didn't find any major issues.")
+  ) {
+    return null;
+  }
+
+  const match = body.match(/\*\*Reviewed commit:\*\* `([0-9a-f]{10,40})`/i);
+  return match ? match[1].toLowerCase() : null;
+}
+
 export function parseAttemptCount(
   commentBodies,
   prNumber,

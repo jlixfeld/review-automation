@@ -8,9 +8,9 @@ classic `codex-review` commit status, not a model-authored GitHub approval.
 
 For each open, non-draft pull request:
 
-1. The workflow writes `codex-review=pending` to the current head SHA. Native
-   Codex auto-review, configured for every pull-request revision, supplies the
-   review.
+1. Native Codex auto-review, configured for every pull-request revision,
+   supplies the review. Until Codex emits a terminal signal for the current
+   head, the required `codex-review` context is absent and merging stays blocked.
 2. A review from the exact native Codex App account is accepted only when its
    commit matches the pull request's current head.
 3. A clean review resolves older Codex conversations and writes
@@ -82,8 +82,8 @@ For every repository:
 2. Open a canary pull request or push a canary revision.
 3. Confirm native Codex auto-review starts without a manual or bot-authored
    mention.
-4. Confirm the current SHA transitions through `pending` and then either
-   `failure` or `success`.
+4. Confirm the current SHA receives either `failure` or `success`; before that,
+   the required context remains absent.
 5. For a finding-bearing review, confirm Claude pushes a tested fix and the new
    revision is reviewed again.
 6. Confirm a clean current-head review produces `codex-review=success`.
@@ -96,7 +96,8 @@ the Claude job and receives no Claude credential.
 
 ## Failure and rollback
 
-- No Codex response leaves the status pending.
+- No Codex response leaves the required status absent, so merging remains
+  blocked.
 - A stale review is ignored.
 - Remaining findings, a Claude failure, the tenth-attempt limit, or an
   orchestration failure leaves the gate failing.

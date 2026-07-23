@@ -11,6 +11,7 @@ import {
   attemptMarker,
   buildClaudePrompt,
   canStartFixAttempt,
+  cleanReviewCommit,
   handledReviewMarker,
   hasMarker,
   isEligibleFix,
@@ -23,54 +24,81 @@ import {
   selectCodexThreadsToResolve,
 } from "./orchestrator.mjs";
 
-const REQUEST_ACTIONS = new Set([
-  "opened",
-  "synchronize",
-  "reopened",
-  "ready_for_review",
-]);
-
 export async function runAction({ env, event, client }) {
   const outputs = emptyOutputs(event);
 
-  if (env.GITHUB_EVENT_NAME === "pull_request_target") {
-    return handleRequestEvent({ event, client, outputs });
-  }
   if (env.GITHUB_EVENT_NAME === "pull_request_review") {
     return handleReviewEvent({ env, event, client, outputs });
+  }
+  if (env.GITHUB_EVENT_NAME === "issue_comment") {
+    return handleCleanCommentEvent({ env, event, client, outputs });
   }
 
   return outputs;
 }
 
-async function handleRequestEvent({ event, client, outputs }) {
-  if (!REQUEST_ACTIONS.has(event.action)) {
+async function handleCleanCommentEvent({ env, event, client, outputs }) {
+  const codexLogin = readInput(env, "codex-login") || DEFAULT_CODEX_LOGIN;
+  if (codexLogin.includes("*")) {
+    throw new Error("codex-login must be one exact GitHub login, not a wildcard");
+  }
+  if (
+    event.action !== "created" ||
+    !event.issue?.pull_request ||
+    !sameText(event.comment?.user?.login, codexLogin)
+  ) {
     return outputs;
   }
 
-  const prNumber = event.pull_request?.number ?? event.number;
+  const reviewedCommit = cleanReviewCommit(event.comment?.body);
+  if (!reviewedCommit) {
+    return outputs;
+  }
+
+  const prNumber = event.issue?.number;
   if (!Number.isInteger(prNumber)) {
-    throw new Error("Pull request event is missing a pull request number");
+    throw new Error("Clean review comment is missing a pull request number");
   }
 
   const pr = await client.getPullRequest(prNumber);
   outputs["pr-number"] = String(pr.number);
   outputs["head-ref"] = pr.head?.ref ?? "";
-
+  const headSha = pr.head?.sha;
   if (
     !isEligibleRequest(pr) ||
-    event.pull_request?.head?.sha !== pr.head?.sha
+    typeof headSha !== "string" ||
+    !headSha.toLowerCase().startsWith(reviewedCommit)
   ) {
     return outputs;
   }
+  if (typeof event.comment?.node_id !== "string") {
+    throw new Error("Clean review comment is missing its node id");
+  }
 
-  await client.createCommitStatus(
-    pr.head.sha,
-    "pending",
-    `PR #${pr.number} is awaiting the current native Codex review`,
-  );
+  const handledMarker = handledReviewMarker(event.comment.node_id, headSha);
+  try {
+    const comments = await client.listIssueComments(pr.number);
+    if (hasMarker(comments, handledMarker)) {
+      await setTerminalStatus(client, pr, 0);
+      return outputs;
+    }
 
-  return outputs;
+    const threads = await client.listReviewThreads(pr.number);
+    const threadIds = selectCodexThreadsToResolve({
+      threads,
+      codexLogin,
+      clean: true,
+    });
+    for (const threadId of threadIds) {
+      await client.resolveReviewThread(threadId);
+    }
+
+    await client.postIssueComment(pr.number, markerComment(handledMarker));
+    await setTerminalStatus(client, pr, 0);
+    return outputs;
+  } catch (error) {
+    await failClosed(client, pr, error);
+  }
 }
 
 async function handleReviewEvent({ env, event, client, outputs }) {

@@ -5,6 +5,7 @@ import {
   attemptMarker,
   buildClaudePrompt,
   canStartFixAttempt,
+  cleanReviewCommit,
   handledReviewMarker,
   hasMarker,
   isEligibleFix,
@@ -55,6 +56,25 @@ test("markers and generated marker comments are exact", () => {
       "",
       "- Codex",
     ].join("\n"),
+  );
+});
+
+test("clean review commit parsing requires the native summary and SHA", () => {
+  assert.equal(
+    cleanReviewCommit(
+      "Codex Review: Didn't find any major issues. Breezy!\n\n**Reviewed commit:** `0123456789`",
+    ),
+    "0123456789",
+  );
+  assert.equal(
+    cleanReviewCommit("Looks clean.\n\n**Reviewed commit:** `0123456789`"),
+    null,
+  );
+  assert.equal(
+    cleanReviewCommit(
+      "Codex Review: Didn't find any major issues.\n\n**Reviewed commit:** `not-a-sha`",
+    ),
+    null,
   );
 });
 

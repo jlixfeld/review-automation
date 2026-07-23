@@ -40,8 +40,8 @@ on:
         value: ${{ jobs.orchestrate.outputs.attempt }}
 
 concurrency:
-  group: agent-review-loop-${{ github.repository }}-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  group: agent-review-loop-${{ github.repository }}-${{ github.event.pull_request.number || github.event.issue.number }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name != 'issue_comment' }}
 
 jobs:
   orchestrate:
