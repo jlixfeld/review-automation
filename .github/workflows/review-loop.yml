@@ -1,0 +1,95 @@
+name: Reusable agent review loop
+
+on:
+  workflow_call:
+    inputs:
+      automation_ref:
+        description: Immutable review-automation ref to check out.
+        required: false
+        type: string
+        default: v1
+      codex_login:
+        description: Exact native Codex GitHub App login.
+        required: false
+        type: string
+        default: chatgpt-codex-connector[bot]
+      max_fix_attempts:
+        description: Maximum Claude fix attempts for one pull request.
+        required: false
+        type: number
+        default: 10
+    secrets:
+      claude_code_oauth_token:
+        description: Claude Code OAuth credential.
+        required: true
+    outputs:
+      should-fix:
+        description: Whether this event invoked a Claude fix attempt.
+        value: ${{ jobs.orchestrate.outputs.should-fix }}
+      pr-number:
+        description: Pull request number handled by this event.
+        value: ${{ jobs.orchestrate.outputs.pr-number }}
+      head-ref:
+        description: Current pull request head branch.
+        value: ${{ jobs.orchestrate.outputs.head-ref }}
+      prompt:
+        description: Complete Claude fix prompt.
+        value: ${{ jobs.orchestrate.outputs.prompt }}
+      attempt:
+        description: One-based Claude fix-attempt number.
+        value: ${{ jobs.orchestrate.outputs.attempt }}
+
+concurrency:
+  group: agent-review-loop-${{ github.repository }}-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: true
+
+jobs:
+  orchestrate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+      statuses: write
+    outputs:
+      should-fix: ${{ steps.review.outputs.should-fix }}
+      pr-number: ${{ steps.review.outputs.pr-number }}
+      head-ref: ${{ steps.review.outputs.head-ref }}
+      prompt: ${{ steps.review.outputs.prompt }}
+      attempt: ${{ steps.review.outputs.attempt }}
+    steps:
+      - name: Check out trusted orchestration code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: jlixfeld/review-automation
+          ref: ${{ inputs.automation_ref }}
+          path: review-automation
+          persist-credentials: false
+
+      - name: Handle review event
+        id: review
+        uses: ./review-automation
+        with:
+          github-token: ${{ github.token }}
+          codex-login: ${{ inputs.codex_login }}
+          max-fix-attempts: ${{ inputs.max_fix_attempts }}
+
+  fix:
+    needs: orchestrate
+    if: needs.orchestrate.outputs.should-fix == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Evaluate and address Codex findings
+        uses: anthropics/claude-code-action@44423bdec74b97d67543eb16c110546762c110b2
+        with:
+          allowed_bots: ${{ inputs.codex_login }}
+          claude_code_oauth_token: ${{ secrets.claude_code_oauth_token }}
+          github_token: ${{ github.token }}
+          additional_permissions: |
+            actions: read
+          prompt: ${{ needs.orchestrate.outputs.prompt }}

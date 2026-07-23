@@ -19,10 +19,16 @@ test("package exposes the dependency-free Node test command", async () => {
 
 test("action metadata declares the stable Node 20 contract", async () => {
   const action = await readFile(new URL("../action.yml", import.meta.url), "utf8");
+  const inputBlock = action.slice(
+    action.indexOf("inputs:"),
+    action.indexOf("outputs:"),
+  );
 
   assert.match(action, /^name: Codex review orchestrator$/m);
   assert.deepEqual(
-    [...action.matchAll(/^  ([a-z][a-z-]+):$/gm)].map((match) => match[1]),
+    [...inputBlock.matchAll(/^  ([a-z][a-z-]+):$/gm)].map(
+      (match) => match[1],
+    ),
     ["github-token", "codex-login", "max-fix-attempts"],
   );
   assert.match(action, /^runs:\n  using: node20\n  main: src\/index\.mjs$/m);
