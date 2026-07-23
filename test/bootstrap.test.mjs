@@ -80,6 +80,37 @@ test("review rules append once and replace an existing section surgically", () =
   );
 });
 
+test("review rules migrate the legacy blanket loop prohibition idempotently", () => {
+  const legacy =
+    "- Do not run any review-loop, autofix, simplify, or other branch-mutating workflow.";
+  const scoped =
+    "- Do not autofix, simplify, or otherwise modify the branch from a Codex review. The repository's configured agent review workflow may separately hand justified findings to Claude under its trust and fork-safety guardrails.";
+  const existing = [
+    "# Codex guidance",
+    "",
+    "Before.",
+    legacy,
+    "After.",
+    "",
+  ].join("\n");
+  const expected = [
+    "# Codex guidance",
+    "",
+    "Before.",
+    scoped,
+    "After.",
+    "",
+    rules,
+    "",
+  ].join("\n");
+
+  const migrated = mergeReviewRules(existing, rules);
+
+  assert.equal(migrated, expected);
+  assert.equal(mergeReviewRules(migrated, rules), expected);
+  assert.doesNotMatch(migrated, /Do not run any review-loop/);
+});
+
 test("review rules require every blocking finding to be inline", async () => {
   const reviewRules = await readFile(
     new URL("../templates/code-review-rules.md", import.meta.url),

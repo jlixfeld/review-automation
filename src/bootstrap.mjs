@@ -9,6 +9,11 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+const LEGACY_REVIEW_LOOP_PROHIBITION =
+  "- Do not run any review-loop, autofix, simplify, or other branch-mutating workflow.";
+const SCOPED_REVIEW_LOOP_RULE =
+  "- Do not autofix, simplify, or otherwise modify the branch from a Codex review. The repository's configured agent review workflow may separately hand justified findings to Claude under its trust and fork-safety guardrails.";
+
 export function validateRepository(metadata) {
   if (!metadata?.nameWithOwner || !metadata?.defaultBranchRef?.name) {
     throw new Error("Repository metadata is missing its name or default branch");
@@ -23,7 +28,9 @@ export function validateRepository(metadata) {
 }
 
 export function mergeReviewRules(existingAgents, reviewRules) {
-  const existing = normalize(existingAgents).trimEnd();
+  const existing = normalize(existingAgents)
+    .replaceAll(LEGACY_REVIEW_LOOP_PROHIBITION, SCOPED_REVIEW_LOOP_RULE)
+    .trimEnd();
   const rules = normalize(reviewRules).trim();
   const heading = "## Code Review Rules";
   const startPattern = /^## Code Review Rules[ \t]*$/m;
