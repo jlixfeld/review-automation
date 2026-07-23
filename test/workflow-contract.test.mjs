@@ -74,6 +74,10 @@ test("Claude runs only for an eligible action output with exact bot and secret",
     workflow,
     /fix:\n(?:.*\n)*?    permissions:\n      actions: read\n      contents: write\n      issues: write\n      pull-requests: write\n/,
   );
+  assert.match(
+    workflow,
+    /steps:\n      - name: Check out trusted pull request head\n        uses: actions\/checkout@11d5960a326750d5838078e36cf38b85af677262\n        with:\n          ref: \$\{\{ needs\.orchestrate\.outputs\.head-ref \}\}\n          persist-credentials: true\n\n      - name: Evaluate and address Codex findings/,
+  );
 });
 
 test("caller listens to the exact supported events and passes one named secret", async () => {
