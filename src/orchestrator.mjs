@@ -7,10 +7,6 @@ import {
 const TRUSTED_PERMISSIONS = new Set(["admin", "maintain", "write"]);
 const FOOTER = "- Codex";
 
-export function requestMarker(prNumber, headSha) {
-  return marker("request", prNumber, headSha);
-}
-
 export function handledReviewMarker(reviewNodeId, headSha) {
   return marker("handled", reviewNodeId, headSha);
 }
@@ -31,10 +27,6 @@ export function markersComment(hiddenMarkers) {
   return `${hiddenMarkers.join("\n")}\n\n${FOOTER}`;
 }
 
-export function reviewRequestComment(prNumber, headSha) {
-  return `@codex review\n\n${requestMarker(prNumber, headSha)}\n\n${FOOTER}`;
-}
-
 export function hasMarker(comments, expectedMarker) {
   return comments.some((comment) => {
     return (
@@ -42,6 +34,18 @@ export function hasMarker(comments, expectedMarker) {
       comment.body.includes(expectedMarker)
     );
   });
+}
+
+export function cleanReviewCommit(body) {
+  if (
+    typeof body !== "string" ||
+    !body.startsWith("Codex Review: Didn't find any major issues.")
+  ) {
+    return null;
+  }
+
+  const match = body.match(/\*\*Reviewed commit:\*\* `([0-9a-f]{10,40})`/i);
+  return match ? match[1].toLowerCase() : null;
 }
 
 export function parseAttemptCount(

@@ -112,41 +112,34 @@ export class GitHubClient {
 - [ ] Run `node --test test/github-client.test.mjs` and verify it passes.
 - [ ] Commit with `git commit -m "feat: add GitHub API client"`.
 
-## Task 4: Implement request-event orchestration
+## Task 4: Implement clean-comment orchestration
 
 **Files:**
 
 - Create: `src/index.mjs`
-- Create: `test/request-flow.test.mjs`
+- Create: `test/clean-comment-flow.test.mjs`
 
-**Request flow:**
+**Clean flow:**
 
 ```text
-pull_request_target event
+issue_comment.created event
+  -> require exact native Codex author
+  -> parse reviewed commit from the clean summary
   -> fetch authoritative PR
-  -> reject draft/closed/stale event
-  -> set current head status pending
-  -> post one marked @codex review request if absent
+  -> reject draft/closed/stale commit
+  -> resolve prior Codex threads
+  -> set current head status success
   -> output should-fix=false
 ```
 
 - [ ] Refactor the action entrypoint to export `runAction({ env, event, client, output })` so tests do not spawn a process.
-- [ ] Write a failing happy-path test asserting the complete pending-status payload and exact request comment:
-
-```md
-@codex review
-
-<!-- codex-review-loop:request:PR_NUMBER:HEAD_SHA -->
-
-- Codex
-```
-
-- [ ] Add failing tests for closed PRs, drafts, stale event SHAs, duplicate request markers, and retries.
-- [ ] Assert in every test that request handling never returns `should-fix=true`.
-- [ ] Run `node --test test/request-flow.test.mjs` and verify it fails.
-- [ ] Implement request handling using the authoritative PR returned by GitHub.
-- [ ] Run `node --test test/request-flow.test.mjs` and verify it passes.
-- [ ] Commit with `git commit -m "feat: request idempotent Codex reviews"`.
+- [ ] Write a failing happy-path test asserting thread resolution and the exact success status.
+- [ ] Add failing tests for non-Codex comments, stale reviewed commits, retries, and resolution failure.
+- [ ] Assert in every test that clean-comment handling never returns `should-fix=true`.
+- [ ] Run `node --test test/clean-comment-flow.test.mjs` and verify it fails.
+- [ ] Implement clean-comment handling using the authoritative PR returned by GitHub.
+- [ ] Run `node --test test/clean-comment-flow.test.mjs` and verify it passes.
+- [ ] Commit with `git commit -m "feat: handle clean Codex review comments"`.
 
 ## Task 5: Implement review-event orchestration
 
@@ -203,8 +196,8 @@ outputs:
 
 - [ ] Write failing tests that parse the workflow files as text and assert supported events, explicit permissions, named secret passing, exact Codex bot allowlist, and no `secrets: inherit`.
 - [ ] Assert the reusable workflow invokes the central action, invokes Claude only when `should-fix == 'true'`, and passes the complete action-generated prompt.
-- [ ] Assert the caller handles `opened`, `synchronize`, `reopened`, `ready_for_review`, and `pull_request_review.submitted`.
-- [ ] Assert `pull_request_target` orchestration never checks out or executes PR code.
+- [ ] Assert the caller handles `pull_request_review.submitted` and `issue_comment.created`.
+- [ ] Assert the caller does not expose `pull_request_target`.
 - [ ] Run `node --test test/workflow-contract.test.mjs` and verify it fails.
 - [ ] Implement the reusable workflow, CI workflow, and thin caller template with least-privilege job permissions.
 - [ ] Pin third-party actions to reviewed immutable commit SHAs where practical; document any intentional stable-major pin.
@@ -266,7 +259,7 @@ node scripts/bootstrap-repo.mjs --repo OWNER/REPO [--dry-run]
 - [ ] Add the caller workflow pinned to the central canary SHA and merge the exact `## Code Review Rules` template into `AGENTS.md`.
 - [ ] Add tests or static checks for the workflow and review-rules contract.
 - [ ] Commit, push, and open the rollout PR.
-- [ ] Verify the GitHub Actions-authored `@codex review` request triggers the native Codex App. Stop rollout if it does not.
+- [ ] Verify native Codex auto-review triggers on every pull-request revision without a manual or bot-authored mention. Stop rollout if it does not.
 - [ ] Exercise one high-confidence finding → Claude fix → new Codex review cycle.
 - [ ] Verify the final clean review resolves superseded Codex conversations and writes `codex-review=success`.
 - [ ] Merge only after user approval, then delete the worktree and local/remote rollout branch.

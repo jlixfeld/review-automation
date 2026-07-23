@@ -43,7 +43,7 @@ test("orchestration job has only review and status permissions", async () => {
   assert.match(workflow, /github-token: \$\{\{ github\.token \}\}/);
   assert.match(
     workflow,
-    /group: agent-review-loop-\$\{\{ github\.repository \}\}-\$\{\{ github\.event\.pull_request\.number \}\}\n  cancel-in-progress: true/,
+    /group: agent-review-loop-\$\{\{ github\.repository \}\}-\$\{\{ github\.event\.pull_request\.number \|\| github\.event\.issue\.number \}\}-\$\{\{ github\.event_name \}\}\n  cancel-in-progress: \$\{\{ github\.event_name != 'issue_comment' \}\}/,
   );
 });
 
@@ -80,14 +80,14 @@ test("Claude runs only for an eligible action output with exact bot and secret",
   );
 });
 
-test("caller listens to the exact supported events and passes one named secret", async () => {
+test("caller listens to terminal Codex events and passes one named secret", async () => {
   const caller = await read("templates/agent-review-loop.yml");
 
   for (const fragment of [
-    "pull_request_target:",
-    "types: [opened, synchronize, reopened, ready_for_review]",
     "pull_request_review:",
     "types: [submitted]",
+    "issue_comment:",
+    "types: [created]",
     "uses: jlixfeld/review-automation/.github/workflows/review-loop.yml@v1",
     "claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}",
   ]) {
@@ -96,6 +96,7 @@ test("caller listens to the exact supported events and passes one named secret",
   assert.equal(caller.includes("secrets: inherit"), false);
   assert.equal(caller.includes("actions/checkout"), false);
   assert.equal(caller.includes("pull_request.head.repo"), false);
+  assert.equal(caller.includes("pull_request_target"), false);
 });
 
 test("action metadata declares every reusable output", async () => {
@@ -139,4 +140,6 @@ test("README documents canary-before-gate and fork safety", async () => {
   );
   assert.match(readme, /at most ten times/);
   assert.match(readme, /does not use `secrets: inherit`/);
+  assert.match(readme, /native Codex auto-review/i);
+  assert.match(readme, /every pull-request revision/i);
 });

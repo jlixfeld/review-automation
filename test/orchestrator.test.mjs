@@ -5,6 +5,7 @@ import {
   attemptMarker,
   buildClaudePrompt,
   canStartFixAttempt,
+  cleanReviewCommit,
   handledReviewMarker,
   hasMarker,
   isEligibleFix,
@@ -13,8 +14,6 @@ import {
   markerComment,
   markersComment,
   parseAttemptCount,
-  requestMarker,
-  reviewRequestComment,
   selectCodexThreadsToResolve,
 } from "../src/orchestrator.mjs";
 
@@ -34,10 +33,6 @@ const sameRepositoryPullRequest = {
 };
 
 test("markers and generated marker comments are exact", () => {
-  assert.equal(
-    requestMarker(42, "abc123"),
-    "<!-- codex-review-loop:request:42:abc123 -->",
-  );
   assert.equal(
     handledReviewMarker("PRR_kwDOExample", "abc123"),
     "<!-- codex-review-loop:handled:PRR_kwDOExample:abc123 -->",
@@ -62,14 +57,29 @@ test("markers and generated marker comments are exact", () => {
       "- Codex",
     ].join("\n"),
   );
+});
+
+test("clean review commit parsing requires the native summary and SHA", () => {
   assert.equal(
-    reviewRequestComment(42, "abc123"),
-    "@codex review\n\n<!-- codex-review-loop:request:42:abc123 -->\n\n- Codex",
+    cleanReviewCommit(
+      "Codex Review: Didn't find any major issues. Breezy!\n\n**Reviewed commit:** `0123456789`",
+    ),
+    "0123456789",
+  );
+  assert.equal(
+    cleanReviewCommit("Looks clean.\n\n**Reviewed commit:** `0123456789`"),
+    null,
+  );
+  assert.equal(
+    cleanReviewCommit(
+      "Codex Review: Didn't find any major issues.\n\n**Reviewed commit:** `not-a-sha`",
+    ),
+    null,
   );
 });
 
 test("marker matching is exact and idempotent", () => {
-  const marker = requestMarker(42, "abc123");
+  const marker = attemptMarker(42, 1);
   const comments = [
     {
       user: { login: "github-actions[bot]" },
@@ -81,13 +91,13 @@ test("marker matching is exact and idempotent", () => {
     },
     {
       user: { login: "jlixfeld" },
-      body: markerComment(requestMarker(43, "abc123")),
+      body: markerComment(attemptMarker(43, 1)),
     },
   ];
 
   assert.equal(hasMarker(comments, marker), true);
-  assert.equal(hasMarker(comments, requestMarker(43, "abc123")), false);
-  assert.equal(hasMarker(comments, requestMarker(42, "def456")), false);
+  assert.equal(hasMarker(comments, attemptMarker(43, 1)), false);
+  assert.equal(hasMarker(comments, attemptMarker(42, 2)), false);
 });
 
 test("attempt parsing authenticates, scopes, deduplicates, and rejects malformed markers", () => {
