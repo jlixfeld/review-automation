@@ -98,4 +98,10 @@ jobs:
           github_token: ${{ github.token }}
           additional_permissions: |
             actions: read
+          claude_args: >-
+            --allowedTools "Edit" "Write"
+            "Bash(git status:*)" "Bash(git diff:*)" "Bash(git log:*)"
+            "Bash(git show:*)" "Bash(git add:*)" "Bash(git commit:*)"
+            "Bash(git push:*)" "Bash(uv run:*)" "Bash(rg:*)"
+            "Bash(sed:*)" "Bash(cat:*)" "Bash(ls:*)" "Bash(pwd)"
           prompt: ${{ needs.orchestrate.outputs.prompt }}

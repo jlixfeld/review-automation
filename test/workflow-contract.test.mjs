@@ -70,6 +70,28 @@ test("Claude runs only for an eligible action output with exact bot and secret",
     workflow,
     /prompt: \$\{\{ needs\.orchestrate\.outputs\.prompt \}\}/,
   );
+  for (const tool of [
+    "Edit",
+    "Write",
+    "Bash(git status:*)",
+    "Bash(git diff:*)",
+    "Bash(git log:*)",
+    "Bash(git show:*)",
+    "Bash(git add:*)",
+    "Bash(git commit:*)",
+    "Bash(git push:*)",
+    "Bash(uv run:*)",
+    "Bash(rg:*)",
+    "Bash(sed:*)",
+    "Bash(cat:*)",
+    "Bash(ls:*)",
+    "Bash(pwd)",
+  ]) {
+    const escapedTool = tool.replace(/[()*]/g, "\\$&");
+    assert.match(workflow, new RegExp(`"${escapedTool}"`));
+  }
+  assert.equal(workflow.includes("--dangerously-skip-permissions"), false);
+  assert.equal(workflow.includes('"Bash"'), false);
   assert.match(
     workflow,
     /fix:\n(?:.*\n)*?    permissions:\n      actions: read\n      contents: write\n      issues: write\n      pull-requests: write\n/,
