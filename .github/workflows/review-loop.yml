@@ -84,6 +84,12 @@ jobs:
       issues: write
       pull-requests: write
     steps:
+      - name: Check out trusted pull request head
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ needs.orchestrate.outputs.head-ref }}
+          persist-credentials: true
+
       - name: Evaluate and address Codex findings
         uses: anthropics/claude-code-action@44423bdec74b97d67543eb16c110546762c110b2
         with:
