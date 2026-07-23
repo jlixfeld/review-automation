@@ -41,12 +41,14 @@ test("constants expose the exact stable values", async () => {
     {
       context: constants.CODEX_REVIEW_CONTEXT,
       login: constants.DEFAULT_CODEX_LOGIN,
+      automationLogin: constants.AUTOMATION_LOGIN,
       attempts: constants.MAX_FIX_ATTEMPTS,
       marker: constants.MARKER_PREFIX,
     },
     {
       context: "codex-review",
       login: "chatgpt-codex-connector[bot]",
+      automationLogin: "github-actions[bot]",
       attempts: 10,
       marker: "codex-review-loop",
     },

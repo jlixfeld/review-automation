@@ -1,4 +1,8 @@
-import { MARKER_PREFIX, MAX_FIX_ATTEMPTS } from "./constants.mjs";
+import {
+  AUTOMATION_LOGIN,
+  MARKER_PREFIX,
+  MAX_FIX_ATTEMPTS,
+} from "./constants.mjs";
 
 const TRUSTED_PERMISSIONS = new Set(["admin", "maintain", "write"]);
 const FOOTER = "- Codex";
@@ -33,8 +37,10 @@ export function reviewRequestComment(prNumber, headSha) {
 
 export function hasMarker(comments, expectedMarker) {
   return comments.some((comment) => {
-    const body = typeof comment === "string" ? comment : comment?.body;
-    return typeof body === "string" && body.includes(expectedMarker);
+    return (
+      isAutomationComment(comment) &&
+      comment.body.includes(expectedMarker)
+    );
   });
 }
 
@@ -50,10 +56,10 @@ export function parseAttemptCount(
   );
 
   for (const comment of commentBodies) {
-    const body = typeof comment === "string" ? comment : comment?.body;
-    if (typeof body !== "string") {
+    if (!isAutomationComment(comment)) {
       continue;
     }
+    const body = comment.body;
 
     for (const match of body.matchAll(pattern)) {
       const attempt = Number.parseInt(match[1], 10);
@@ -164,6 +170,13 @@ function sameText(left, right) {
     typeof left === "string" &&
     typeof right === "string" &&
     left.toLowerCase() === right.toLowerCase()
+  );
+}
+
+function isAutomationComment(comment) {
+  return (
+    typeof comment?.body === "string" &&
+    sameText(comment?.user?.login, AUTOMATION_LOGIN)
   );
 }
 

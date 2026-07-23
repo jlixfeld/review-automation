@@ -71,8 +71,18 @@ test("markers and generated marker comments are exact", () => {
 test("marker matching is exact and idempotent", () => {
   const marker = requestMarker(42, "abc123");
   const comments = [
-    { body: `prefix ${marker} suffix` },
-    { body: markerComment(attemptMarker(42, 1)) },
+    {
+      user: { login: "github-actions[bot]" },
+      body: `prefix ${marker} suffix`,
+    },
+    {
+      user: { login: "github-actions[bot]" },
+      body: markerComment(attemptMarker(42, 1)),
+    },
+    {
+      user: { login: "jlixfeld" },
+      body: markerComment(requestMarker(43, "abc123")),
+    },
   ];
 
   assert.equal(hasMarker(comments, marker), true);
@@ -80,19 +90,29 @@ test("marker matching is exact and idempotent", () => {
   assert.equal(hasMarker(comments, requestMarker(42, "def456")), false);
 });
 
-test("attempt parsing is scoped, distinct, and rejects malformed markers", () => {
-  const bodies = [
-    markerComment(attemptMarker(42, 1)),
-    markerComment(attemptMarker(42, 1)),
-    markerComment(attemptMarker(42, 3)),
-    markerComment(attemptMarker(99, 9)),
-    "<!-- codex-review-loop:attempt:42:not-a-number -->\n\n- Codex",
-    "<!-- codex-review-loop:attempt:42:0 -->\n\n- Codex",
-    "<!-- codex-review-loop:attempt:42:11 -->\n\n- Codex",
+test("attempt parsing authenticates, scopes, deduplicates, and rejects malformed markers", () => {
+  const comments = [
+    automationComment(markerComment(attemptMarker(42, 1))),
+    automationComment(markerComment(attemptMarker(42, 1))),
+    automationComment(markerComment(attemptMarker(42, 3))),
+    automationComment(markerComment(attemptMarker(99, 9))),
+    automationComment(
+      "<!-- codex-review-loop:attempt:42:not-a-number -->\n\n- Codex",
+    ),
+    automationComment(
+      "<!-- codex-review-loop:attempt:42:0 -->\n\n- Codex",
+    ),
+    automationComment(
+      "<!-- codex-review-loop:attempt:42:11 -->\n\n- Codex",
+    ),
+    {
+      user: { login: "jlixfeld" },
+      body: markerComment(attemptMarker(42, 10)),
+    },
   ];
 
-  assert.equal(parseAttemptCount(bodies, 42, 10), 2);
-  assert.equal(parseAttemptCount(bodies, 99, 10), 1);
+  assert.equal(parseAttemptCount(comments, 42, 10), 2);
+  assert.equal(parseAttemptCount(comments, 99, 10), 1);
 });
 
 test("attempts one through ten are permitted and attempt eleven is denied", () => {
@@ -234,5 +254,12 @@ function thread(id, login, reviewId, isResolved = false) {
         },
       ],
     },
+  };
+}
+
+function automationComment(body) {
+  return {
+    user: { login: "github-actions[bot]" },
+    body,
   };
 }

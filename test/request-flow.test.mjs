@@ -68,6 +68,7 @@ test("existing request marker makes retries idempotent", async () => {
     pr: pullRequest,
     comments: [
       {
+        user: { login: "github-actions[bot]" },
         body: [
           "@codex review",
           "",
@@ -96,6 +97,31 @@ test("existing request marker makes retries idempotent", async () => {
     ],
     ["listIssueComments", 42],
   ]);
+});
+
+test("a pull-request author cannot spoof the request marker", async () => {
+  const client = fakeClient({
+    pr: pullRequest,
+    comments: [
+      {
+        user: { login: "jlixfeld" },
+        body: "<!-- codex-review-loop:request:42:abc123 -->",
+      },
+    ],
+  });
+
+  await runAction({
+    env: { GITHUB_EVENT_NAME: "pull_request_target" },
+    event: requestEvent,
+    client,
+  });
+
+  assert.ok(
+    client.calls.some(
+      ([method, , body]) =>
+        method === "postIssueComment" && body.startsWith("@codex review"),
+    ),
+  );
 });
 
 test("closed and draft pull requests are ignored", async () => {

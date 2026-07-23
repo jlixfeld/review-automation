@@ -161,9 +161,19 @@ test("changes-requested review without inline comments fails closed", async () =
 
 test("attempts one through ten run, but an eleventh attempt cannot run", async () => {
   for (let priorAttempts = 0; priorAttempts <= 10; priorAttempts += 1) {
-    const comments = Array.from({ length: priorAttempts }, (_, index) => ({
-      body: markerComment(attemptMarker(42, index + 1)),
-    }));
+    const comments = [
+      ...Array.from({ length: priorAttempts }, (_, index) =>
+        automationComment(markerComment(attemptMarker(42, index + 1))),
+      ),
+      {
+        user: { login: "jlixfeld" },
+        body: markerComment(attemptMarker(42, 10)),
+      },
+      {
+        user: { login: "jlixfeld" },
+        body: "<!-- codex-review-loop:limit:42:10 -->",
+      },
+    ];
     const client = fakeClient({
       comments,
       reviewComments: [{ id: 501 }],
@@ -223,11 +233,9 @@ test("stale review and stale event SHA are ignored", async () => {
 test("an already handled review repairs terminal status but never reinvokes Claude", async () => {
   const client = fakeClient({
     comments: [
-      {
-        body: markerComment(
-          handledReviewMarker("LATEST_REVIEW", "abc123"),
-        ),
-      },
+      automationComment(
+        markerComment(handledReviewMarker("LATEST_REVIEW", "abc123")),
+      ),
     ],
     reviewComments: [{ id: 501 }],
   });
@@ -246,6 +254,26 @@ test("an already handled review repairs terminal status but never reinvokes Clau
       "PR #42 has unresolved native Codex findings",
     ],
   ]);
+});
+
+test("a pull-request author cannot spoof a handled-review marker", async () => {
+  const client = fakeClient({
+    comments: [
+      {
+        user: { login: "jlixfeld" },
+        body: markerComment(
+          handledReviewMarker("LATEST_REVIEW", "abc123"),
+        ),
+      },
+    ],
+    reviewComments: [{ id: 501 }],
+    permission: "write",
+  });
+
+  const result = await runReview(client);
+
+  assert.equal(result["should-fix"], "true");
+  assert.equal(result.attempt, "1");
 });
 
 test("fork findings never request permission, credentials, or Claude fixes", async () => {
@@ -421,5 +449,12 @@ function thread(id, login, reviewId, isResolved = false) {
         },
       ],
     },
+  };
+}
+
+function automationComment(body) {
+  return {
+    user: { login: "github-actions[bot]" },
+    body,
   };
 }
