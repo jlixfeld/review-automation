@@ -11,6 +11,7 @@ import {
   isEligibleRequest,
   manualInterventionComment,
   markerComment,
+  markersComment,
   parseAttemptCount,
   requestMarker,
   reviewRequestComment,
@@ -48,6 +49,18 @@ test("markers and generated marker comments are exact", () => {
   assert.equal(
     markerComment(attemptMarker(42, 7)),
     "<!-- codex-review-loop:attempt:42:7 -->\n\n- Codex",
+  );
+  assert.equal(
+    markersComment([
+      handledReviewMarker("PRR_kwDOExample", "abc123"),
+      attemptMarker(42, 7),
+    ]),
+    [
+      "<!-- codex-review-loop:handled:PRR_kwDOExample:abc123 -->",
+      "<!-- codex-review-loop:attempt:42:7 -->",
+      "",
+      "- Codex",
+    ].join("\n"),
   );
   assert.equal(
     reviewRequestComment(42, "abc123"),

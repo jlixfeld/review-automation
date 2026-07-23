@@ -23,6 +23,10 @@ export function markerComment(hiddenMarker) {
   return `${hiddenMarker}\n\n${FOOTER}`;
 }
 
+export function markersComment(hiddenMarkers) {
+  return `${hiddenMarkers.join("\n")}\n\n${FOOTER}`;
+}
+
 export function reviewRequestComment(prNumber, headSha) {
   return `@codex review\n\n${requestMarker(prNumber, headSha)}\n\n${FOOTER}`;
 }
