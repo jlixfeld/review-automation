@@ -41,6 +41,10 @@ test("orchestration job has only review and status permissions", async () => {
   );
   assert.match(workflow, /uses: \.\/review-automation/);
   assert.match(workflow, /github-token: \$\{\{ github\.token \}\}/);
+  assert.match(
+    workflow,
+    /group: agent-review-loop-\$\{\{ github\.repository \}\}-\$\{\{ github\.event\.pull_request\.number \}\}\n  cancel-in-progress: true/,
+  );
 });
 
 test("Claude runs only for an eligible action output with exact bot and secret", async () => {
@@ -111,6 +115,7 @@ test("central CI pins official actions and runs all tests", async () => {
     workflow,
     /actions\/checkout@11d5960a326750d5838078e36cf38b85af677262/,
   );
+  assert.match(workflow, /persist-credentials: false/);
   assert.match(
     workflow,
     /actions\/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020/,

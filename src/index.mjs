@@ -85,8 +85,7 @@ async function handleRequestEvent({ event, client, outputs }) {
 }
 
 async function handleReviewEvent({ env, event, client, outputs }) {
-  const codexLogin =
-    readInput(env, "codex-login") || env.INPUT_CODEX_LOGIN || DEFAULT_CODEX_LOGIN;
+  const codexLogin = readInput(env, "codex-login") || DEFAULT_CODEX_LOGIN;
   if (codexLogin.includes("*")) {
     throw new Error("codex-login must be one exact GitHub login, not a wildcard");
   }
@@ -263,9 +262,7 @@ function emptyOutputs(event) {
 
 function parseMaxAttempts(env) {
   const raw =
-    readInput(env, "max-fix-attempts") ||
-    env.INPUT_MAX_FIX_ATTEMPTS ||
-    String(MAX_FIX_ATTEMPTS);
+    readInput(env, "max-fix-attempts") || String(MAX_FIX_ATTEMPTS);
   const value = Number.parseInt(raw, 10);
   if (
     String(value) !== raw.trim() ||

@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import test from "node:test";
 
 import {
@@ -6,6 +8,7 @@ import {
   buildBootstrapPlan,
   canEnableGate,
   mergeReviewRules,
+  runCommand,
   validateRepository,
 } from "../src/bootstrap.mjs";
 
@@ -74,6 +77,21 @@ test("review rules append once and replace an existing section surgically", () =
       "Run tests.",
       "",
     ].join("\n"),
+  );
+});
+
+test("review rules reject malformed replacement content on every path", () => {
+  assert.throws(
+    () => mergeReviewRules("# Repository Instructions\n", "Malformed rules"),
+    /must start with ## Code Review Rules/,
+  );
+  assert.throws(
+    () =>
+      mergeReviewRules(
+        "## Code Review Rules\n\nExisting rules.\n",
+        "Malformed rules",
+      ),
+    /must start with ## Code Review Rules/,
   );
 });
 
@@ -200,4 +218,104 @@ test("dry-run performs only repository inspection and never exposes a secret", a
     mutateBranchProtection: false,
   });
   assert.equal(output.join("\n").includes(secret), false);
+});
+
+test("non-dry-run performs the complete rollout and removes its temporary checkout", async () => {
+  const calls = [];
+  const output = [];
+  let checkoutPath;
+  let writtenWorkflow;
+  let writtenAgents;
+  const secret = "oauth-secret-value";
+  const runner = async (command, args, options = {}) => {
+    calls.push([command, args, { ...options, input: options.input ? "<redacted>" : undefined }]);
+    if (command === "gh" && args[0] === "repo" && args[1] === "view") {
+      return { stdout: JSON.stringify(metadata), stderr: "" };
+    }
+    if (command === "gh" && args[0] === "issue") {
+      return {
+        stdout: "https://github.com/jlixfeld/example/issues/17\n",
+        stderr: "",
+      };
+    }
+    if (command === "gh" && args[0] === "repo" && args[1] === "clone") {
+      checkoutPath = args[3];
+      await mkdir(checkoutPath, { recursive: true });
+      await writeFile(
+        join(checkoutPath, "AGENTS.md"),
+        "# Existing instructions\n",
+      );
+      return { stdout: "", stderr: "" };
+    }
+    if (command === "git" && args[0] === "add") {
+      writtenWorkflow = await readFile(
+        join(checkoutPath, ".github/workflows/agent-review-loop.yml"),
+        "utf8",
+      );
+      writtenAgents = await readFile(join(checkoutPath, "AGENTS.md"), "utf8");
+      return { stdout: "", stderr: "" };
+    }
+    if (command === "gh" && args[0] === "pr") {
+      return {
+        stdout: "https://github.com/jlixfeld/example/pull/18\n",
+        stderr: "",
+      };
+    }
+    return { stdout: "", stderr: "" };
+  };
+
+  const result = await bootstrapRepository({
+    repository: "jlixfeld/example",
+    secret,
+    runner,
+    writeOutput: (value) => output.push(value),
+  });
+
+  assert.deepEqual(result, {
+    repository: "jlixfeld/example",
+    issue: "https://github.com/jlixfeld/example/issues/17",
+    pullRequest: "https://github.com/jlixfeld/example/pull/18",
+    branch: "chore/agent-review-loop-17",
+    mutateBranchProtection: false,
+  });
+  assert.match(writtenWorkflow, /max_fix_attempts: 10/);
+  assert.match(writtenAgents, /# Existing instructions/);
+  assert.match(writtenAgents, /## Code Review Rules/);
+  assert.deepEqual(
+    calls.map(([command, args]) => [command, args[0], args[1]]),
+    [
+      ["gh", "repo", "view"],
+      ["gh", "issue", "create"],
+      ["gh", "repo", "clone"],
+      ["git", "checkout", "-b"],
+      ["git", "add", ".github/workflows/agent-review-loop.yml"],
+      ["git", "commit", "-m"],
+      ["git", "push", "origin"],
+      ["gh", "secret", "set"],
+      ["gh", "pr", "create"],
+    ],
+  );
+  const secretCall = calls.find(
+    ([command, args]) => command === "gh" && args[0] === "secret",
+  );
+  assert.deepEqual(secretCall[1], [
+    "secret",
+    "set",
+    "CLAUDE_CODE_OAUTH_TOKEN",
+    "--repo",
+    "jlixfeld/example",
+  ]);
+  assert.equal(output.join("\n").includes(secret), false);
+  await assert.rejects(access(checkoutPath), { code: "ENOENT" });
+});
+
+test("runCommand kills and rejects a subprocess that exceeds its timeout", async () => {
+  await assert.rejects(
+    runCommand(
+      process.execPath,
+      ["-e", "setTimeout(() => {}, 10_000)"],
+      { timeoutMs: 20 },
+    ),
+    /timed out after 20ms/,
+  );
 });

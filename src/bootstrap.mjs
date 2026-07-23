@@ -1,3 +1,14 @@
+import { spawn } from "node:child_process";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 export function validateRepository(metadata) {
   if (!metadata?.nameWithOwner || !metadata?.defaultBranchRef?.name) {
     throw new Error("Repository metadata is missing its name or default branch");
@@ -18,6 +29,10 @@ export function mergeReviewRules(existingAgents, reviewRules) {
   const startPattern = /^## Code Review Rules[ \t]*$/m;
   const match = startPattern.exec(existing);
 
+  if (!rules.startsWith(heading)) {
+    throw new Error("Review rules must start with ## Code Review Rules");
+  }
+
   if (!match) {
     return [existing, rules].filter(Boolean).join("\n\n") + "\n";
   }
@@ -29,10 +44,6 @@ export function mergeReviewRules(existingAgents, reviewRules) {
   const next = followingHeading.exec(existing);
   const before = existing.slice(0, sectionStart).trimEnd();
   const after = next ? existing.slice(next.index).trimStart() : "";
-
-  if (!rules.startsWith(heading)) {
-    throw new Error("Review rules must start with ## Code Review Rules");
-  }
 
   return [before, rules, after].filter(Boolean).join("\n\n") + "\n";
 }
@@ -200,7 +211,10 @@ export async function bootstrapRepository({
     await mkdir(join(checkoutPath, ".github", "workflows"), {
       recursive: true,
     });
-    await writeFile(workflowPath, plan.files[".github/workflows/agent-review-loop.yml"]);
+    await writeFile(
+      workflowPath,
+      plan.files[".github/workflows/agent-review-loop.yml"],
+    );
     await writeFile(agentsPath, plan.files["AGENTS.md"]);
     await runner(
       "git",
@@ -258,6 +272,20 @@ export async function runCommand(command, args, options = {}) {
       shell: false,
       stdio: ["pipe", "pipe", "pipe"],
     });
+    const timeoutMs = options.timeoutMs ?? 120_000;
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      child.kill("SIGKILL");
+      reject(
+        new Error(
+          `${command} ${args.join(" ")} timed out after ${timeoutMs}ms`,
+        ),
+      );
+    }, timeoutMs);
     let stdout = "";
     let stderr = "";
     child.stdout.setEncoding("utf8");
@@ -268,8 +296,20 @@ export async function runCommand(command, args, options = {}) {
     child.stderr.on("data", (chunk) => {
       stderr += chunk;
     });
-    child.on("error", reject);
+    child.on("error", (error) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timer);
+      reject(error);
+    });
     child.on("close", (code) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timer);
       if (code === 0) {
         resolve({ stdout, stderr });
       } else {
@@ -301,13 +341,3 @@ function parseCreatedNumber(url, segment) {
   }
   return Number.parseInt(match[1], 10);
 }
-import { spawn } from "node:child_process";
-import {
-  mkdir,
-  mkdtemp,
-  readFile,
-  rm,
-  writeFile,
-} from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";

@@ -40,7 +40,7 @@ on:
         value: ${{ jobs.orchestrate.outputs.attempt }}
 
 concurrency:
-  group: agent-review-loop-${{ github.repository }}-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+  group: agent-review-loop-${{ github.repository }}-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
