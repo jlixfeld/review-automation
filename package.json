@@ -1,0 +1,8 @@
+{
+  "name": "@jlixfeld/review-automation",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}
